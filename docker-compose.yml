@@ -1,0 +1,62 @@
+version: '3.10'
+
+services:
+  tivit:
+    container_name: tivit-api
+    hostname: tivit.local
+    pull_policy: never
+    image: tivit:latest
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile
+    command: 'uvicorn src.core.api:app --host 0.0.0.0 --port 8000 --reload'
+    env_file: .env
+    volumes:
+      - "./src:/app/src"
+      - "./dev/conf/:/var/tivit/conf/"
+
+    ports:
+      - "8800:8000"
+    restart: always
+    depends_on:
+      alembic:
+        condition: service_completed_successfully
+      postgresql:
+        condition: service_healthy
+
+    networks:
+      - api-backend
+
+  postgresql:
+    hostname: postgresql.db.local
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER?}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?}
+      - POSTGRES_DB=${POSTGRES_DB?}
+    ports:
+      - '5433:5432'
+    volumes:
+      - "./dev/postgres_db/:/var/lib/postgresql/data"
+    networks:
+      - api-backend
+    healthcheck:
+      test: [ "CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER?} -d ${POSTGRES_DB?}'" ]
+
+  alembic:
+    container_name: alembic
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.alembic
+    command: bash -c "cd /app && alembic upgrade head"
+    env_file: .env
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - api-backend
+    restart: on-failure
+
+networks:
+  api-backend:
