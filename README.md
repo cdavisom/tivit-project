@@ -27,6 +27,8 @@ Alembic container will apply migrations once postgre container is ready and will
 
 TIVIT container will serve the API at ```localhost:8800```
 
+**Seed users "user" and "admin" prepopulated in db. Both users are expected to login/authenticate with credentials provided in test scope shared.**
+
 ## API Reference
 
 User openapi url to interact with API
